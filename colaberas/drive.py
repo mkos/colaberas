@@ -10,11 +10,12 @@ Usage:
     >>> download_file('https://drive.google.com/open?id=0B0BtCVXdKsWnd5LWcREol0l9mLT', 'photo.jpg')
 """
 import io
+import os.path
 import urllib.parse
 
 from tqdm import tqdm
 from googleapiclient.discovery import build
-from googleapiclient.http import MediaIoBaseDownload
+from googleapiclient.http import MediaIoBaseDownload, MediaFileUpload
 
 
 def target_file_id(uri):
@@ -55,3 +56,19 @@ def download_file(file_uri, local_name, chunksize=1024 ** 2):
                 new_update = int(status.progress() * 100)
                 progress_bar.update(new_update - last_update)
                 last_update = new_update
+
+
+def upload_file(local_file, mimetype='application/octet-stream'):
+    file_metadata = {
+        'name': os.path.basename(local_file),
+        'mimeType': mimetype
+    }
+    media = MediaFileUpload(local_file,
+                            mimetype=mimetype,
+                            resumable=True)
+
+    drive_service = build('drive', 'v3')
+    created = drive_service.files().create(body=file_metadata,
+                                           media_body=media,
+                                           fields='id').execute()
+    print('File ID: {}'.format(created.get('id')))

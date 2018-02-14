@@ -9,25 +9,21 @@ Overview
 
 Google Colab boilerplate to help train deep learning models with Keras
 
-Installation / Usage
---------------------
+Installation
+------------
 
 To install use pip:
 
-    $ pip install colaberas
+```bash
+!pip install git+https://github.com/mkos/colaberas
+```
 
+Usage
+-----
 
-Or clone the repo:
-
-    $ git clone https://github.com/mkos/colaberas.git
-    $ python setup.py install
-    
-Contributing
-------------
-
-TBD
-
-Example
--------
-
-TBD
+```python
+from google.colab import auth
+auth.authenticate_user()
+from colaberas.drive import download_file
+download_file('https://drive.google.com/open?id=0B0BtCVXdKsWnd5LWcREol0l9mLT', 'photo.jpg')
+```

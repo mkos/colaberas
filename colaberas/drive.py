@@ -10,7 +10,7 @@ Usage:
     >>> download_file('https://drive.google.com/open?id=0B0BtCVXdKsWnd5LWcREol0l9mLT', 'photo.jpg')
 """
 import io
-import os.path
+import pathlib
 import urllib.parse
 
 from tqdm import tqdm

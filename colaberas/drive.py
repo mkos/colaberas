@@ -28,6 +28,51 @@ def target_file_id(uri):
     return urllib.parse.parse_qs(uri.query)['id'][0]
 
 
+def find_id(filename, parent_folder_id=None):
+    """
+    Looks for ID of the file in GDrive. If there are multiple files with that name and parent_folder_id wasn't
+    provider, ValueError exeption will be raised.
+
+    :param filename: filename to search for
+    :param parent_folder_id: optional id of the parent folder
+    :exception ValueError: when multiple files were found
+    :return: id of the file found
+
+    Examples
+
+        Search for id of the file 'text.txt' anywhere in the GDrive. Warning: if multiple file with that name exist,
+        ValueError exception will be raised.
+
+        >>> find_id('test.txt')
+
+        Search for id of the file 'text.txt' in root directory (a.k.a. My Drive)
+
+        >>> find_id('test.txt', 'root')
+
+        Search for id of the file 'text.txt' in 'subdir' sub directory
+
+        >>> find_id('test.txt', find_id('subdir'))
+    """
+    page_token = None
+
+    query = "name='{}' and not trashed".format(filename)
+    if parent_folder_id is not None:
+        query += " and '{}' in parents".format(parent_folder_id)
+
+    response = drive_service.files().list(q=query,
+                                          spaces='drive',
+                                          fields='nextPageToken, files(id, name, parents)',
+                                          pageToken=page_token).execute()
+
+    files_found = response.get('files', [])
+    if len(files_found) == 0:
+        return None
+    elif len(files_found) > 1:
+        raise ValueError('Multiple \'{}\' files found!'.format(filename))
+    else:
+        return files_found[0].get('id')
+
+
 def download_file(file_uri, local_name, chunksize=1024 ** 2):
     """
     Downloads file from Google Drive
@@ -58,17 +103,45 @@ def download_file(file_uri, local_name, chunksize=1024 ** 2):
                 last_update = new_update
 
 
-def upload_file(local_file, mimetype='application/octet-stream'):
+def upload_file(local_path, remote_dir, mimetype='application/octet-stream'):
+    """
+    Uploads file to GDrive.
+
+    :param local_path: local file path
+    :param remote_dir: GDrive folder path to upload the file
+    :param mimetype: optional mimetype, defaults to binary transfer
+    :return: ID of the file that has been created or updated
+    """
+    local = pathlib.Path(local_path)
+    remote = pathlib.Path(remote_dir)
+
     file_metadata = {
-        'name': os.path.basename(local_file),
-        'mimeType': mimetype
+        'name': local.name,
+        'mimeType': mimetype,
     }
-    media = MediaFileUpload(local_file,
+    media = MediaFileUpload(path.name,
                             mimetype=mimetype,
                             resumable=True)
 
     drive_service = build('drive', 'v3')
-    created = drive_service.files().create(body=file_metadata,
-                                           media_body=media,
-                                           fields='id').execute()
-    print('File ID: {}'.format(created.get('id')))
+
+    parent_id = 'root'
+    for path_part in remote.parts:
+        # expects that all the dirs exist
+        parent_id = find_id(path_part, parent_id)
+
+    file_id = find_id(local.name, parent_id)
+
+    if file_id is not None:
+        created = drive_service.files().update(fileId=file_id,
+                                               body=file_metadata,
+                                               media_body=media,
+                                               fields='id').execute()
+    else:
+        file_metadata['parents'] = [parent_id]
+        created = drive_service.files().create(
+            body=file_metadata,
+            media_body=media,
+            fields='id').execute()
+
+    return created.get('id')

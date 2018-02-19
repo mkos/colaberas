@@ -28,6 +28,17 @@ def target_file_id(uri):
     return urllib.parse.parse_qs(uri.query)['id'][0]
 
 
+def file_id_from_path(path):
+    parent_id = 'root'
+    last_parent_id = None
+    for path_part in path.parts:
+        # expects that all the dirs exist
+        last_parent_id = parent_id
+        parent_id = find_id(path_part, parent_id)
+
+    return parent_id, last_parent_id
+
+
 def find_id(filename, parent_folder_id=None):
     """
     Looks for ID of the file in GDrive. If there are multiple files with that name and parent_folder_id wasn't
@@ -59,6 +70,7 @@ def find_id(filename, parent_folder_id=None):
     if parent_folder_id is not None:
         query += " and '{}' in parents".format(parent_folder_id)
 
+    drive_service = build('drive', 'v3')
     response = drive_service.files().list(q=query,
                                           spaces='drive',
                                           fields='nextPageToken, files(id, name, parents)',
@@ -73,20 +85,26 @@ def find_id(filename, parent_folder_id=None):
         return files_found[0].get('id')
 
 
-def download_file(file_uri, local_name, chunksize=1024 ** 2):
+def download_file(remote_path, local_dir, chunksize=1024 ** 2):
     """
     Downloads file from Google Drive
-    :param file_uri: shareable link from Google Drive
-    :param local_name: name of the file it will be downloaded to
+    :param remote_path: shareable link from Google Drive
+    :param local_dir: name of the file it will be downloaded to
     :param chunksize: size of the download buffer, 1MB by default
     :return: None
     """
+    local = pathlib.Path(local_dir)
+    remote = pathlib.Path(remote_path)
+
     drive_service = build('drive', 'v3')
-    file_id = target_file_id(file_uri)
-    request = drive_service.files().get_media(fileId=file_id)
+    fid, _ = file_id_from_path(remote)
+    request = drive_service.files().get_media(fileId=fid)
 
     # https://google.github.io/google-api-python-client/docs/epy/googleapiclient.http.MediaIoBaseDownload-class.html
-    fh = io.FileIO(local_name, mode='wb')
+    if not local.exists() or not local.is_dir():
+        local.mkdir(parents=True)
+
+    fh = io.FileIO(str(local / remote.name), mode='wb')
     downloader = MediaIoBaseDownload(fh, request, chunksize=chunksize)
 
     with tqdm(total=100, ncols=100) as progress_bar:
@@ -104,14 +122,6 @@ def download_file(file_uri, local_name, chunksize=1024 ** 2):
 
 
 def upload_file(local_path, remote_dir, mimetype='application/octet-stream'):
-    """
-    Uploads file to GDrive.
-
-    :param local_path: local file path
-    :param remote_dir: GDrive folder path to upload the file
-    :param mimetype: optional mimetype, defaults to binary transfer
-    :return: ID of the file that has been created or updated
-    """
     local = pathlib.Path(local_path)
     remote = pathlib.Path(remote_dir)
 
@@ -119,18 +129,13 @@ def upload_file(local_path, remote_dir, mimetype='application/octet-stream'):
         'name': local.name,
         'mimeType': mimetype,
     }
-    media = MediaFileUpload(path.name,
+    media = MediaFileUpload(local.name,
                             mimetype=mimetype,
                             resumable=True)
 
     drive_service = build('drive', 'v3')
 
-    parent_id = 'root'
-    for path_part in remote.parts:
-        # expects that all the dirs exist
-        parent_id = find_id(path_part, parent_id)
-
-    file_id = find_id(local.name, parent_id)
+    file_id, parent_id = file_id_from_path(remote / local.name)
 
     if file_id is not None:
         created = drive_service.files().update(fileId=file_id,
@@ -143,5 +148,3 @@ def upload_file(local_path, remote_dir, mimetype='application/octet-stream'):
             body=file_metadata,
             media_body=media,
             fields='id').execute()
-
-    return created.get('id')

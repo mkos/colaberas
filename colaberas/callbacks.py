@@ -12,7 +12,7 @@ class ModelCheckpointDriveUpload(ModelCheckpoint):
 
     def on_epoch_end(self, epoch, logs=None):
         super().on_epoch_end(epoch, logs)
-        upload_file(self.filepath)
+        upload_file(self.filepath, self.drive_folder)
 
 
 class CSVLoggerDriveUpload(CSVLogger):

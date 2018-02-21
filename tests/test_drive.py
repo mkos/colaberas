@@ -24,13 +24,22 @@ def test_file_id_from_path(find_id):
     assert parent_id == 345
 
 
-@mock.patch.object('colaberas.drive.find_id', side_effect=patch_find_id)
-@mock.patch('googleapiclient.http.MediaFileUpload')
-@mock.patch('googleapiclient.discovery.build')
-#@mock.patch('googleapis.driveservice')
+@mock.patch('colaberas.drive.file_id_from_path', return_value=(None, None))
+@mock.patch('colaberas.drive.MediaFileUpload')
+@mock.patch('colaberas.drive.build')
 @pytest.mark.parametrize('local_path,gdrive_path,result', [
     ('local/file/path.txt', 'test/path/', None),
-#    ('local/file/path.txt', 'test/path/file.txt', None)
+    # ('local/file/path.txt', 'test/path/file.txt', None)
 ])
-def test_upload_file(build, MediaFileUpload, find_id, local_path, gdrive_path, result):
+def test_upload_file(build_mock, media_file_upload_mock, file_id_from_path_mock, local_path, gdrive_path, result):
+    #files_mock = mock.MagicMock()
+    #build_mock.return_value = files_mock
     upload_file(local_path, gdrive_path, mimetype='application/octet-stream')
+
+    media_file_upload_mock.assert_called_with(local_path, mimetype='application/octet-stream', resumable=True)
+    file_id_from_path_mock.assert_called_with(pathlib.Path(gdrive_path) / 'path.txt')
+    build_mock.assert_called_with('drive', 'v3')
+
+
+    #print(build_mock.method_calls)
+    #build_mock.files.assert_called()

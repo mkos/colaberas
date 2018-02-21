@@ -129,7 +129,7 @@ def upload_file(local_path, remote_dir, mimetype='application/octet-stream'):
         'name': local.name,
         'mimeType': mimetype,
     }
-    media = MediaFileUpload(local.name,
+    media = MediaFileUpload(str(local),
                             mimetype=mimetype,
                             resumable=True)
 

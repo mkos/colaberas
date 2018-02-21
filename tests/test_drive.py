@@ -34,19 +34,34 @@ def test_file_id_from_path_bad_path(find_id):
     assert parent_id == 123
 
 
-@mock.patch('colaberas.drive.file_id_from_path', return_value=(None, None))
+@mock.patch('colaberas.drive.file_id_from_path')
 @mock.patch('colaberas.drive.MediaFileUpload')
 @mock.patch('colaberas.drive.build')
-@pytest.mark.parametrize('local_path,gdrive_path, result', [
-    ('local/file/path.txt', 'test/path/', None),
-    # ('local/file/path.txt', 'test/path/file.txt', None)
+@pytest.mark.parametrize('local_path,gdrive_path,fifp_retval,result', [
+    ('local/something/file.txt', 'test/path/', (567, 345), 'update'),
+    ('local/something/file.txt', 'test/path', (567, 345), 'update'),
+    ('local/something/file.txt', 'test/path/othername.txt', (567, 345), 'update'),
+    ('local/something/file.txt', 'test/new_path/', (None, 345), 'create')
 ])
-def test_upload_file(build_mock, media_file_upload_mock, file_id_from_path_mock, local_path, gdrive_path, result):
-    upload_file(local_path, gdrive_path, mimetype='application/octet-stream')
+def test_upload_file(build_mock, media_file_upload_mock, file_id_from_path_mock, local_path, gdrive_path, fifp_retval, result):
+    file_id_from_path_mock.return_value = fifp_retval
 
+    upload_file(local_path, gdrive_path, mimetype='application/octet-stream')
     media_file_upload_mock.assert_called_with(local_path, mimetype='application/octet-stream', resumable=True)
-    file_id_from_path_mock.assert_called_with(pathlib.Path(gdrive_path) / 'path.txt')
+    file_id_from_path_mock.assert_called_with(pathlib.Path(gdrive_path) / 'file.txt')
     build_mock.assert_called_with('drive', 'v3')
 
     build_mock.return_value.files.assert_called_once()
-    build_mock.return_value.files.return_value.create.assert_called_once()
+
+    if result == 'create':
+        build_mock.return_value.files.return_value.create.assert_called_once()
+        build_mock.return_value.files.return_value.update.assert_not_called()
+
+    elif result == 'update':
+        build_mock.return_value.files.return_value.create.assert_not_called()
+        build_mock.return_value.files.return_value.update.assert_called_once()
+
+    else:
+        build_mock.return_value.files.return_value.create.assert_not_called()
+        build_mock.return_value.files.return_value.update.assert_not_called()
+    #build_mock.return_value.files.return_value.update.assert_called_once()

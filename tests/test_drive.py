@@ -32,14 +32,11 @@ def test_file_id_from_path(find_id):
     # ('local/file/path.txt', 'test/path/file.txt', None)
 ])
 def test_upload_file(build_mock, media_file_upload_mock, file_id_from_path_mock, local_path, gdrive_path, result):
-    #files_mock = mock.MagicMock()
-    #build_mock.return_value = files_mock
     upload_file(local_path, gdrive_path, mimetype='application/octet-stream')
 
     media_file_upload_mock.assert_called_with(local_path, mimetype='application/octet-stream', resumable=True)
     file_id_from_path_mock.assert_called_with(pathlib.Path(gdrive_path) / 'path.txt')
     build_mock.assert_called_with('drive', 'v3')
 
-
-    #print(build_mock.method_calls)
-    #build_mock.files.assert_called()
+    build_mock.return_value.files.assert_called_once()
+    build_mock.return_value.files.return_value.create.assert_called_once()

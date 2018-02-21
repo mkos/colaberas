@@ -2,7 +2,10 @@ from unittest import mock
 from unittest.mock import patch
 from colaberas.callbacks import ModelCheckpointDriveUpload
 from keras.callbacks import ModelCheckpoint
+import pytest
 
+
+@pytest.mark.skip
 @patch('colaberas.drive.upload_file')
 def test_ModelCheckpointDriveUpload_on_epoch_end(upload_file):
     patcher = mock.patch.object(ModelCheckpointDriveUpload, '__bases__', (ModelCheckpoint,))

@@ -29,14 +29,17 @@ def target_file_id(uri):
 
 
 def file_id_from_path(path):
-    parent_id = 'root'
-    last_parent_id = None
-    for path_part in path.parts:
-        # expects that all the dirs exist
-        last_parent_id = parent_id
-        parent_id = find_id(path_part, parent_id)
+    file_id = 'root'
 
-    return parent_id, last_parent_id
+    for path_part in path.parts:
+        parent_id = file_id
+        # expects that all the dirs exist
+        file_id = find_id(path_part, parent_id)
+        if parent_id is None:
+            break
+
+
+    return file_id, parent_id
 
 
 def find_id(filename, parent_folder_id=None):
@@ -129,7 +132,7 @@ def upload_file(local_path, remote_dir, mimetype='application/octet-stream'):
         'name': local.name,
         'mimeType': mimetype,
     }
-    media = MediaFileUpload(local.name,
+    media = MediaFileUpload(str(local),
                             mimetype=mimetype,
                             resumable=True)
 
@@ -137,11 +140,16 @@ def upload_file(local_path, remote_dir, mimetype='application/octet-stream'):
 
     file_id, parent_id = file_id_from_path(remote / local.name)
 
+    if parent_id is None:
+        raise ValueError('GDrive path \'{}\' does not exist'.format(remote))
+
     if file_id is not None:
-        created = drive_service.files().update(fileId=file_id,
-                                               body=file_metadata,
-                                               media_body=media,
-                                               fields='id').execute()
+        created = drive_service.files().update(
+            fileId=file_id,
+            body=file_metadata,
+            media_body=media,
+            fields='id').execute()
+
     else:
         file_metadata['parents'] = [parent_id]
         created = drive_service.files().create(

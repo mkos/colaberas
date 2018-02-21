@@ -139,11 +139,16 @@ def upload_file(local_path, remote_dir, mimetype='application/octet-stream'):
 
     file_id, parent_id = file_id_from_path(remote / local.name)
 
+    if parent_id is None:
+        raise ValueError('GDrive path \'{}\' does not exist'.format(remote))
+
     if file_id is not None:
-        created = drive_service.files().update(fileId=file_id,
-                                               body=file_metadata,
-                                               media_body=media,
-                                               fields='id').execute()
+        created = drive_service.files().update(
+            fileId=file_id,
+            body=file_metadata,
+            media_body=media,
+            fields='id').execute()
+
     else:
         file_metadata['parents'] = [parent_id]
         created = drive_service.files().create(

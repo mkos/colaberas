@@ -41,17 +41,23 @@ def test_file_id_from_path_bad_path(find_id):
     ('local/something/file.txt', 'test/path/', (567, 345), 'update'),
     ('local/something/file.txt', 'test/path', (567, 345), 'update'),
     ('local/something/file.txt', 'test/path/othername.txt', (567, 345), 'update'),
-    ('local/something/file.txt', 'test/new_path/', (None, 345), 'create')
+    ('local/something/file.txt', 'test/new_path/', (None, 345), 'create'),
+    ('local/something/file.txt', 'test/new_path/another_new/', (None, None), None)
 ])
 def test_upload_file(build_mock, media_file_upload_mock, file_id_from_path_mock, local_path, gdrive_path, fifp_retval, result):
     file_id_from_path_mock.return_value = fifp_retval
     gdrive_file = pathlib.Path(gdrive_path) / 'file.txt'
-    upload_file(local_path, gdrive_path, mimetype='application/octet-stream')
-    media_file_upload_mock.assert_called_with(local_path, mimetype='application/octet-stream', resumable=True)
-    file_id_from_path_mock.assert_called_with(gdrive_file)
-    build_mock.assert_called_with('drive', 'v3')
 
-    build_mock.return_value.files.assert_called_once()
+    if result is None:
+        with pytest.raises(ValueError):
+            upload_file(local_path, gdrive_path, mimetype='application/octet-stream')
+    else:
+        upload_file(local_path, gdrive_path, mimetype='application/octet-stream')
+
+        build_mock.return_value.files.assert_called_once()
+        media_file_upload_mock.assert_called_with(local_path, mimetype='application/octet-stream', resumable=True)
+        file_id_from_path_mock.assert_called_with(gdrive_file)
+        build_mock.assert_called_with('drive', 'v3')
 
     if result == 'create':
         file_metadata = {

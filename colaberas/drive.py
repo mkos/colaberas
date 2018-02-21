@@ -35,6 +35,8 @@ def file_id_from_path(path):
         # expects that all the dirs exist
         last_parent_id = parent_id
         parent_id = find_id(path_part, parent_id)
+        if parent_id is None:
+            break
 
     return parent_id, last_parent_id
 

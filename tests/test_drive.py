@@ -13,6 +13,7 @@ def patch_find_id(filename, *args, **kwargs):
         return 345
     if filename == 'file.txt' and parent_id == 345:
         return 567
+    return None
 
 
 @mock.patch('colaberas.drive.find_id', side_effect=patch_find_id)
@@ -24,10 +25,19 @@ def test_file_id_from_path(find_id):
     assert parent_id == 345
 
 
+@mock.patch('colaberas.drive.find_id', side_effect=patch_find_id)
+def test_file_id_from_path_bad_path(find_id):
+    file_id, parent_id = file_id_from_path(pathlib.Path('test/bad_path/file.txt'))
+
+    find_id.assert_has_calls([call('test', 'root'), call('bad_path', 123)])
+    assert file_id is None
+    assert parent_id == 123
+
+
 @mock.patch('colaberas.drive.file_id_from_path', return_value=(None, None))
 @mock.patch('colaberas.drive.MediaFileUpload')
 @mock.patch('colaberas.drive.build')
-@pytest.mark.parametrize('local_path,gdrive_path,result', [
+@pytest.mark.parametrize('local_path,gdrive_path, result', [
     ('local/file/path.txt', 'test/path/', None),
     # ('local/file/path.txt', 'test/path/file.txt', None)
 ])

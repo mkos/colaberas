@@ -16,6 +16,11 @@ def patch_find_id(filename, *args, **kwargs):
     return None
 
 
+def media_five_upload_side_effect(path, *args, **kwargs):
+    if path != 'local/something/file.txt':
+        raise FileNotFoundError()
+
+
 @mock.patch('colaberas.drive.find_id', side_effect=patch_find_id)
 def test_file_id_from_path(find_id):
     file_id, parent_id = file_id_from_path(pathlib.Path('test/path/file.txt'))
@@ -62,14 +67,15 @@ def test_file_id_from_path_file_does_not_exit_short_path(find_id):
 
 
 @mock.patch('colaberas.drive.file_id_from_path')
-@mock.patch('colaberas.drive.MediaFileUpload')
+@mock.patch('colaberas.drive.MediaFileUpload', side_effect=media_five_upload_side_effect)
 @mock.patch('colaberas.drive.build')
 @pytest.mark.parametrize('local_path,gdrive_path,fifp_retval,result', [
     ('local/something/file.txt', 'test/path/', (567, 345), 'update'),
     ('local/something/file.txt', 'test/path', (567, 345), 'update'),
     ('local/something/file.txt', 'test/path/othername.txt', (567, 345), 'update'),
     ('local/something/file.txt', 'test/new_path/', (None, 345), 'create'),
-    ('local/something/file.txt', 'test/new_path/another_new/', (None, None), None)
+    ('local/something/file.txt', 'test/new_path/another_new/', (None, None), None),
+    ('local/bad_local/file.txt', 'test/new_path/another_new/', (None, None), None)
 ])
 def test_upload_file(build_mock, media_file_upload_mock, file_id_from_path_mock, local_path, gdrive_path, fifp_retval, result):
     file_id_from_path_mock.return_value = fifp_retval

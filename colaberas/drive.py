@@ -132,9 +132,13 @@ def upload_file(local_path, remote_dir, mimetype='application/octet-stream'):
         'name': local.name,
         'mimeType': mimetype,
     }
-    media = MediaFileUpload(str(local),
-                            mimetype=mimetype,
-                            resumable=True)
+
+    try:
+        media = MediaFileUpload(str(local),
+                                mimetype=mimetype,
+                                resumable=True)
+    except FileNotFoundError:
+        raise ValueError('Source path \'[}\' does not exist'.format(local))
 
     drive_service = build('drive', 'v3')
 

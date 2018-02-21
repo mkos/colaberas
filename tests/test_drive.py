@@ -82,6 +82,7 @@ def test_upload_file(build_mock, media_file_upload_mock, file_id_from_path_mock,
                                   body=file_metadata,
                                   media_body=mock.ANY,
                                   fields=mock.ANY)
+         )
 
     else:
         build_mock.return_value.files.return_value.create.assert_not_called()

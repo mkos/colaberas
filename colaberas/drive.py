@@ -29,16 +29,17 @@ def target_file_id(uri):
 
 
 def file_id_from_path(path):
-    parent_id = 'root'
-    last_parent_id = None
+    file_id = 'root'
+
     for path_part in path.parts:
+        parent_id = file_id
         # expects that all the dirs exist
-        last_parent_id = parent_id
-        parent_id = find_id(path_part, parent_id)
+        file_id = find_id(path_part, parent_id)
         if parent_id is None:
             break
 
-    return parent_id, last_parent_id
+
+    return file_id, parent_id
 
 
 def find_id(filename, parent_folder_id=None):

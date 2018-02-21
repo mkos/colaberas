@@ -27,11 +27,38 @@ def test_file_id_from_path(find_id):
 
 @mock.patch('colaberas.drive.find_id', side_effect=patch_find_id)
 def test_file_id_from_path_bad_path(find_id):
+    file_id, parent_id = file_id_from_path(pathlib.Path('test/bad_path/path/file.txt'))
+
+    find_id.assert_has_calls([call('test', 'root'), call('bad_path', 123)])
+    assert file_id is None
+    assert parent_id is None
+
+
+@mock.patch('colaberas.drive.find_id', side_effect=patch_find_id)
+def test_file_id_from_path_file_does_not_exit(find_id):
+    file_id, parent_id = file_id_from_path(pathlib.Path('test/path/other_file.txt'))
+
+    find_id.assert_has_calls([call('test', 'root'), call('path', 123), call('other_file.txt', 345)])
+    assert file_id is None
+    assert parent_id == 345
+
+
+@mock.patch('colaberas.drive.find_id', side_effect=patch_find_id)
+def test_file_id_from_path_file_does_not_exit_short_path(find_id):
+    file_id, parent_id = file_id_from_path(pathlib.Path('test/other_file.txt'))
+
+    find_id.assert_has_calls([call('test', 'root'), call('other_file.txt', 123)])
+    assert file_id is None
+    assert parent_id == 123
+
+
+@mock.patch('colaberas.drive.find_id', side_effect=patch_find_id)
+def test_file_id_from_path_file_does_not_exit_short_path(find_id):
     file_id, parent_id = file_id_from_path(pathlib.Path('test/bad_path/file.txt'))
 
     find_id.assert_has_calls([call('test', 'root'), call('bad_path', 123)])
     assert file_id is None
-    assert parent_id == 123
+    assert parent_id is None
 
 
 @mock.patch('colaberas.drive.file_id_from_path')

@@ -1,6 +1,6 @@
 from unittest import mock
 from unittest.mock import call
-from colaberas.drive import file_id_from_path, upload_file
+from colaberas.drive import file_id_from_path, upload_file, download_file
 import pathlib
 import pytest
 
@@ -126,3 +126,17 @@ def test_upload_file(build_mock, media_file_upload_mock, file_id_from_path_mock,
     else:
         build_mock.return_value.files.return_value.create.assert_not_called()
         build_mock.return_value.files.return_value.update.assert_not_called()
+
+
+@mock.patch('colaberas.drive.tqdm')
+@mock.patch('colaberas.drive.MediaIoBaseDownload')
+@mock.patch('colaberas.drive.file_id_from_path')
+@mock.patch('colaberas.drive.build')
+@pytest.mark.parametrize('gdrive_path,local_path,result', [
+    ('test/path/file.txt', 'local/something/', None),
+])
+def test_download_file(build_mock, file_id_from_path_mock, media_id_file_dl_mock, tqdm_mock, gdrive_path, local_path, result):
+    file_id_from_path_mock.return_value = (567, None)
+    download_file(gdrive_path, local_path)
+    build_mock.assert_called_with('drive', 'v3')
+    build_mock.return_value.files.return_value.get_media.assert_called_once_with(fileId=567)
